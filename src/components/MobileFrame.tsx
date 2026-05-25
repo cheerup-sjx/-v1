@@ -15,7 +15,7 @@ interface MobileFrameProps {
 
 export default function MobileFrame({ children, navTitle, onBackClick, headerExtra }: MobileFrameProps) {
   return (
-    <div className="relative mx-auto my-4 w-[375px] h-[812px] bg-[#f4f5f7] rounded-[48px] border-[10px] border-slate-900 shadow-2xl overflow-hidden flex flex-col font-sans select-none" id="mobile-iphone-frame">
+    <div className="relative mx-auto my-4 w-[375px] h-[812px] bg-[#F6F8FC] rounded-[48px] border-[10px] border-slate-900 shadow-2xl overflow-hidden flex flex-col font-sans select-none" id="mobile-iphone-frame">
       {/* Dynamic Island / Speaker Notch */}
       <div className="absolute top-2 left-1/2 transform -translate-x-1/2 w-32 h-[18px] bg-black rounded-full z-50 flex items-center justify-center">
         <span className="w-1.5 h-1.5 rounded-full bg-slate-800 absolute right-6"></span>
@@ -57,12 +57,12 @@ export default function MobileFrame({ children, navTitle, onBackClick, headerExt
       </div>
 
       {/* App Body (Scrollable Screen Content) */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none pb-8 flex flex-col bg-[#F3F4F6]" id="mobile-scrollable-body">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-none pb-8 flex flex-col bg-[#F6F8FC]" id="mobile-scrollable-body">
         {children}
       </div>
 
       {/* Mobile iOS Home Indicator */}
-      <div className="h-6 bg-[#f4f5f7] flex items-center justify-center relative w-full border-t border-slate-100 z-30">
+      <div className="h-6 bg-[#F6F8FC] flex items-center justify-center relative w-full border-t border-slate-100 z-30">
         <div className="w-32 h-[4px] bg-slate-400 rounded-full"></div>
       </div>
     </div>

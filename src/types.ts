@@ -47,6 +47,26 @@ export interface SkuRecommend {
   badge: 'high-sales' | 'same-price' | 'top-spec'; // 高销量版 | 同价位版 | 顶配
 }
 
+export interface DecisionDimension {
+  id: string;
+  label: string;        // 维度名称，如"价格/落地成本"
+  conclusion: string;   // 一句话结论，必须有双边对比
+  supportEvidence: string;  // 支持推荐的一条正向证据
+  riskReminder: string;     // 一条反向提醒/风险提示
+  isRelevant: boolean;  // 是否与当前用户相关，只展示true
+}
+
+export interface DecisionChainStep {
+  id: string;
+  title: string;          // 例如："家里人坐得舒服吗？"
+  dimensions: string[];   // 关联维度标签
+  conclusion: string;     // 一句话结论明示谁更占优
+  supportEvidence: string; // 推荐理由 / 支持证据
+  reverseReminder: string; // 反向提醒 / 风险提示
+  impact: string;         // 对候选车的影响
+  isRelevant?: boolean;   // 是否与当前用户相关
+}
+
 export interface DecisionEvidence {
   id: string;
   question: string; // 决策问题

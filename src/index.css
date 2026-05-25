@@ -1,1 +1,69 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --color-brand-primary: #111E36;
+  --color-brand-secondary: #667085;
+  --color-brand-weak: #98A2B3;
+  --color-brand-bg: #F4F7FB;
+}
+
+/* Custom UI Design Tokens */
+.ui-font-base {
+  font-family: "PingFang SC", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  color: #111E36;
+}
+
+/* Card Tokens */
+.ui-card-main {
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 0.5px solid #D1D8E6;
+  box-sizing: border-box;
+}
+
+.ui-card-inner {
+  background: #FFFFFF;
+  border-radius: 10px;
+  border: 0.5px solid #D1D8E6;
+  box-sizing: border-box;
+}
+
+/* CoT / Blue Structured Instruction Block */
+.ui-cot-block {
+  background: #E9EFFC;
+  border-radius: 2px 12px 12px 12px;
+  border: 0.5px solid #D1D8E6;
+  box-sizing: border-box;
+}
+
+/* Semantic Badges / Alert States */
+.badge-blue {
+  background: #E9EFFC;
+  color: #0353E9;
+  border: 0.5px solid #D1D8E6;
+}
+
+.badge-green {
+  background: #ECFDF3;
+  color: #039855;
+  border: 0.5px solid #ABEFC6;
+}
+
+.badge-red {
+  background: #FEF3F2;
+  color: #D92D20;
+  border: 0.5px solid #FAD1CC;
+}
+
+.badge-amber {
+  background: #FFFAEB;
+  color: #B54708;
+  border: 0.5px solid #FEDF89;
+}
+
+.badge-gray {
+  background: #F4F6F9;
+  color: #667085;
+  border: 0.5px solid #E5E7EB;
+}

@@ -157,7 +157,7 @@ export default function App() {
               </div>
               <h2 className="font-bold text-sm mt-1 text-white">「 对比决策推进与闭环收网 」</h2>
               <p className="text-[11px] text-slate-400 mt-1 leading-snug">
-                AI双车智能体Battle。打通<strong>权重滑块、车型库Plus事实底座、反证风险审计、四类反馈纠偏和SKU版本拆解</strong>，致力于推进候选收缩与留资。
+                AI双车智能对比。打通<strong>权重滑块、车型参数事实底座、缺点与风险提醒、多项反馈与版本推荐</strong>，推进最终选车决策。
               </p>
               {activeStage === 'stage2' && (
                 <div className="absolute right-3 bottom-3 text-amber-500">
@@ -211,9 +211,9 @@ export default function App() {
                   </h4>
                   <ul className="space-y-1 pl-3.5 list-disc text-[11px] text-slate-400">
                     <li>Battle双车求解对局 (Model Y vs 极氪001)</li>
-                    <li><strong>动态权重阻阻阻</strong>，拖拽滑块重排指数</li>
-                    <li><strong>反证与风险安全卡</strong> 避坑审计，点击表达在意</li>
-                    <li><strong>SKU版本确认卡</strong>, 支持切换对比口径</li>
+                    <li><strong>动态权重配置</strong>，拖拽滑块重新调整匹配首选</li>
+                    <li><strong>避坑与缺点核实卡</strong> 确认车辆真实弱项，点击表达在意</li>
+                    <li><strong>推荐车款版本卡</strong>，支持切换细分配置进行对比</li>
                     <li><strong>完整反馈纠偏</strong>：否定/约束/排斥/偏好多类</li>
                     <li>一键小红书笔记草稿输出 &amp; 交给买方微信暗谈</li>
                   </ul>

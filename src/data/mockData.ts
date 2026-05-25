@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { CarInfo, DecisionEvidence, ParameterRow, ReviewItem, SkuRecommend } from '../types';
+import { CarInfo, DecisionDimension, DecisionChainStep, DecisionEvidence, ParameterRow, ReviewItem, SkuRecommend } from '../types';
 
 // ================== STAGE 1 (MVP) DATA ==================
 // Candidates:
@@ -21,8 +21,8 @@ export const STAGE_1_CARS: CarInfo[] = [
     tagline: '搭载华为ADS基础智驾，高性价比纯电级舒适体验',
     keepStatus: 'keep',
     decisionRole: '智驾与预算首选',
-    keepReason: '该车标配华为ADS 2.0基础包、高精中控与全景泊车，近期上海现车双重补贴红利扣减1.5万，使23.5万实际落地门槛下的智驾安全品质领先同级，如果偏好高阶安全与质胜智驾则首选此版本。',
-    riskWarning: '外观风格偏沉稳克制，增程馈电状态下高速亏电油耗达11L/100km，不适合极度执着低油耗的用户。',
+    keepReason: '华为ADS 2.0基础包标配，高速/高架智驾无需额外付费，上海双补后落地约23.5万，适合预算控制在26万以内且智驾是第一优先级的用户',
+    riskWarning: '如果更在意传统品牌稳定感和长期保值确定性，问界需要再考量',
     unsuitableConditions: [
       '不适合增程馈电状态下长期跑高速且要求超低油耗的用户',
       '不适合对后座零重力座椅极致腿部空间有绝对要求的六人家庭'
@@ -40,8 +40,8 @@ export const STAGE_1_CARS: CarInfo[] = [
     tagline: '魔毯空气悬架标配，大六座家庭头等舱体验',
     keepStatus: 'keep',
     decisionRole: '舒适与空间天花板',
-    keepReason: '标配魔毯空气悬挂第二代，全舱静音双层玻璃配二排独立按摩座椅。二三排通透性及进出过道达160mm无对手，如果家庭出行成员在5-6人且极度关注后排奢享舒适底盘，则推荐首选。',
-    riskWarning: '车体过宽，在老旧小区停放极费周折。城区无图高阶NOA功能仅配置在35.98w的Max版上，不适合预算受限且执着于城区高阶自动驾驶的高科极客。',
+    keepReason: '全系标配魔毯空气悬架和第二排独立座椅腰托按摩，后排舒适性在30万级六座SUV中无对手，适合家庭用车且后排体验是核心的用户',
+    riskWarning: '如果预算卡在30万以内，理想L8落地价约32万会超出预算上限',
     unsuitableConditions: [
       '不适合预算严格控制在28万以内且对首年保费极度敏感的家庭买家',
       '不适合主要在狭窄城区小巷与老旧小区穿行、强烈对大车身有焦虑的驾驶人'
@@ -70,45 +70,176 @@ export const STAGE_1_CARS: CarInfo[] = [
   }
 ];
 
-export const STAGE_1_EVIDENCES: DecisionEvidence[] = [
+export const STAGE_1_DIMENSIONS: DecisionDimension[] = [
   {
-    id: 'e1',
-    sourceName: '车型库Plus',
-    question: '30万级大六/五座，高阶智驾谁成本最低？',
-    conclusion: '如果预算24-26万且智驾是首选，问界M7华为ADS基础包入门即可开；如果预算30万以上且后排是核心，理想L8魔毯底盘+独立座椅优势明显',
-    evidenceList: [
-      { text: '问界M7 Pro：华为ADS 2.0基础包全国高速/高架开启流畅车道领航，入门款即可使用，无需额外付费', highlight: true },
-      { text: '理想L8 基础Pro：智驾仅支持高速NOA，若要获得城区路况无图NOA必须买MAX顶配，预算陡升3.8万', highlight: false },
-      { text: '腾势N8：搭载DiPilot 300，支持高速NOA，城区NOA需选装，选装价格约8000元', highlight: false },
-      { text: '汽车之家口碑2341条评价中，67%问界M7车主提及"智驾体验超预期"；理想L8相关评价中43%提及"基础版智驾不够用"', highlight: false }
-    ],
-    type: 'parameter'
+    id: 'd1',
+    label: '价格 / 落地成本',
+    isRelevant: true,
+    conclusion: '问界M7落地约23.5万，理想L8落地约32万，差价8万，预算是否充足直接决定候选范围',
+    supportEvidence: '问界M7上海双补后落地约23.5万，华为ADS基础包标配无需额外付费，性价比在同级最高',
+    riskReminder: '理想L8落地超32万，如果预算卡在30万以内，需要先确认是否能接受这个价格'
   },
   {
-    id: 'e2',
-    sourceName: '主站行为轨迹/参配表',
-    question: '两排三人和三排两娃，哪台座椅分布更符合家庭用车？',
-    conclusion: '如果日常只有3-5人出行且看重后备箱装载，问界M7五座版性价比极高；若必须坐满6人且要求二排独立进出，理想L8大六座布局魔毯底盘是天花板',
-    evidenceList: [
-      { text: '特斯拉/理想等主战对比轨迹显示您的对比核心在于"二排独立"：理想L8采用2+2+2布局，二排中间留出160mm宽通道，两个独立座椅标配按摩，儿童进出三排极其轻松', highlight: true },
-      { text: '问界M7五座版：后备箱纵深达1100mm、容积高达686L，能够完美堆放婴儿车、露营装备等，比理想六座满载储物空间多出约400L', highlight: false },
-      { text: '腾势N8：2+2+2布局，第二排设独立头等舱座椅，但由于轴距2830mm为同级最小，二排推至最前时膝部空间仅剩一拳，且无魔毯空悬', highlight: false },
-      { text: '汽车之家2105条车主实际行为链条中，58%的二胎家庭最终因为"满载长途后备箱不够"从理想L8流回问界M7五座，42%因为"二排按摩"坚持理想L8', highlight: false }
-    ],
-    type: 'behavior'
+    id: 'd2',
+    label: '空间 / 舒适性',
+    isRelevant: true,
+    conclusion: '理想L8后排舒适性明显占优，问界M7空间够用但天天花板低于理想',
+    supportEvidence: '理想L8标配魔毯空气悬架和第二排独立座椅腰托按摩，汽车之家口碑1823条中68%车主提及"后排体验超预期"',
+    riskReminder: '问界M7五座版二排过道宽度约280mm，带儿童安全座椅通过性需要实地验证'
   },
   {
-    id: 'e3',
-    sourceName: '主站报价核算工具',
-    question: '上海本地真实落地价、补贴红利及隐藏置换暗补谁最大？',
-    conclusion: '如果预算25万以内，问界M7近期叠加地方现车双重补贴，综合落地性价比碾压理想L8和腾势N8；如果预算充裕在31万以上，理想和腾势暂无超大额地补',
-    evidenceList: [
-      { text: '问界M7 Pro五座后驱版：厂商指导价24.98万，核算上海政企专属促消费与线下门店提车双补贴1.5万后，上海本地真实落地折算价低至23.5万', highlight: true },
-      { text: '理想L8 Pro增程版：指导价32.18万，线下门店近期平均现金折让约3000-8000元不整，购置税全免，最终实际落地价维持在31.8万-32.1万', highlight: false },
-      { text: '腾势N8 旗舰六座版：指导价31.98万，近期支持最高1.5万置换暗补及2000元保养包，折后实际落地在31.5万左右', highlight: false },
-      { text: '系统精准比对上海主站32万级落地价走势：问界M7平均购车决策耗时7天（受限时大降促单），而理想L8受品牌高端保值支撑平均决策耗时18天', highlight: false }
-    ],
-    type: 'behavior'
+    id: 'd3',
+    label: '智能化 / 辅助驾驶',
+    isRelevant: true,
+    conclusion: '问界M7华为ADS 2.0入门即用，理想L8基础版智驾能力受限，智驾优先选问界M7更省钱',
+    supportEvidence: '问界M7 Pro入门款标配华为ADS 2.0基础包，全国高速/高架开启流畅车道领航，无需额外付费',
+    riskReminder: '理想L8 Pro仅支持高速NOA，要获得城区无图NOA必须买MAX顶配，预算陡升3.8万'
+  },
+  {
+    id: 'd4',
+    label: '补能方式',
+    isRelevant: true,
+    conclusion: '两台都是增程，补能无焦虑，但纯电通勤距离和充电条件会影响实际使用成本',
+    supportEvidence: '问界M7和理想L8均支持加油+充电双补能，CLTC综合续航均超1000km，长途无里程焦虑',
+    riskReminder: '如果家里没有充电桩，纯靠加油使用，增程馈电油耗约9-11L/100km，长期成本需测算'
+  },
+  {
+    id: 'd5',
+    label: '风险点 / 差评',
+    isRelevant: true,
+    conclusion: '问界M7主要风险是品牌稳定性和保值不确定，理想L8主要风险是车身尺寸大停车不便',
+    supportEvidence: '汽车之家口碑数据显示，两车差评率均低于同级均值，整体口碑健康',
+    riskReminder: '问界M7 3年保值率约58%，低于理想L8的61%；理想L8车长5.2米，老小区地库存在剐蹭风险'
+  },
+  {
+    id: 'd6',
+    label: '动力 / 能耗 / 续航',
+    isRelevant: true,
+    conclusion: '两台动力表现接近，日常家用场景无明显差异，不建议作为主要决策依据',
+    supportEvidence: '问界M7百公里加速7.8秒，理想L8百公里加速5.5秒（四驱版），城市通勤场景两台均无压力',
+    riskReminder: '冬季北方纯电续航均有衰减，问界M7纯电CLTC 215km，实测冬季约160-180km'
+  },
+  {
+    id: 'd7',
+    label: '保值率 / 长期成本',
+    isRelevant: false,
+    conclusion: '',
+    supportEvidence: '',
+    riskReminder: ''
+  },
+  {
+    id: 'd8',
+    label: '品牌 / 审美 / 身份气质偏好',
+    isRelevant: false,
+    conclusion: '',
+    supportEvidence: '',
+    riskReminder: ''
+  }
+];
+
+export const STAGE_1_DECISION_CHAIN: DecisionChainStep[] = [
+  {
+    id: 's1_1',
+    title: '家里人坐得舒服吗？',
+    dimensions: ['空间 / 舒适性'],
+    conclusion: '理想 L8 更稳，问界 M7 也够用，腾势 N8 需要再确认第三排体验。',
+    supportEvidence: '理想 L8 的家庭舒适、二排体验和多人出行口碑更稳定。',
+    reverseReminder: '如果你很少满员出行，空间优势不一定是第一决策因素。',
+    impact: '如果后排舒适权重提高，理想 L8 会更靠前。',
+    isRelevant: true
+  },
+  {
+    id: 's1_2',
+    title: '智驾值不值得成为主理由？',
+    dimensions: ['智能化 / 辅助驾驶'],
+    conclusion: '如果你真的重视智驾和智能化体验，问界 M7 权重会上升。',
+    supportEvidence: '问界 M7 在智驾感知、辅助驾驶体验和智能座舱关注度上更容易打中需求。',
+    reverseReminder: '如果你主要是市区短途、对智驾使用频率不高，这个优势可能不会明显改变选择。',
+    impact: '智驾权重提高时，问界 M7 从保留候选上升为重点候选。',
+    isRelevant: true
+  },
+  {
+    id: 's1_3',
+    title: '预算和本地落地价会不会改变选择？',
+    dimensions: ['价格 / 落地成本', '版本口径'],
+    conclusion: '如果预算卡得很死，最终不是先看车系，而是要看具体版本和本地优惠。',
+    supportEvidence: '同一车系不同版本落地价差异明显，本地优惠和权益会直接改变选择。',
+    reverseReminder: '如果只看指导价，容易误判真实购车压力。',
+    impact: '预算约束增强时，系统应优先推荐更接近预算的主销版本。',
+    isRelevant: true
+  },
+  {
+    id: 's1_4',
+    title: '哪些风险你可能接受不了？',
+    dimensions: ['风险点 / 差评', '品牌 / 长期确定性'],
+    conclusion: '如果你更在意长期稳定和售后确定性，问界 M7 和腾势 N8 都需要补充验证。',
+    supportEvidence: '车主口碑、售后便利性、品牌确定性会影响长期使用信任。',
+    reverseReminder: '如果你能接受新品牌或新技术路线的不确定性，这类风险权重可以降低。',
+    impact: '风险权重提高时，系统会优先保留理想 L8 作为稳妥候选。',
+    isRelevant: true
+  }
+];
+
+export const STAGE_2_DECISION_CHAIN: DecisionChainStep[] = [
+  {
+    id: 's2_1',
+    title: '本轮到底更偏问界 M7，还是理想 L8？',
+    dimensions: ['智能化 / 辅助驾驶', '价格 / 落地成本'],
+    conclusion: '如果你更看重智驾、配置完整度和预算弹性，本轮更偏问界 M7。',
+    supportEvidence: '问界 M7 在智驾体验、配置完整度和同预算可选版本上更贴近当前偏好。',
+    reverseReminder: '如果你把家庭舒适和品牌稳定放到第一位，理想 L8 仍然不能排除。',
+    impact: '当前问界 M7 为重点看这台，理想 L8 继续留着对比。',
+    isRelevant: true
+  },
+  {
+    id: 's2_2',
+    title: '家庭乘坐舒适会不会改变结论？',
+    dimensions: ['空间 / 舒适性'],
+    conclusion: '如果后排舒适和家人体验优先级提高，理想 L8 会重新上升。',
+    supportEvidence: '理想 L8 在家庭乘坐、二排舒适和长途场景中更容易形成稳定优势。',
+    reverseReminder: '如果你平时通勤为主、满员场景少，这个优势未必足以反转。',
+    impact: '选择“家人更看重后排”后，理想 L8 权重上升。',
+    isRelevant: true
+  },
+  {
+    id: 's2_3',
+    title: '智驾是不是值得作为核心理由？',
+    dimensions: ['智能化 / 辅助驾驶'],
+    conclusion: '如果智驾是你的强需求，问界 M7 的推荐理由更成立。',
+    supportEvidence: '问界 M7 的智驾相关关注度、配置表达和用户讨论更集中。',
+    reverseReminder: '如果你对辅助驾驶信任度不高，或者使用场景有限，这个优势要降权。',
+    impact: '选择“我更在意智驾”后，问界 M7 继续保持第一候选。',
+    isRelevant: true
+  },
+  {
+    id: 's2_4',
+    title: '预算卡在 30 万以内时怎么选？',
+    dimensions: ['价格 / 落地成本', '版本推荐'],
+    conclusion: '预算越硬，越应该先看版本，不要只看车系。',
+    supportEvidence: '问界 M7 Pro 五座智驾版更容易贴近预算；理想 L8 高配版本价格压力更明显。',
+    reverseReminder: '如果本地优惠变化较大，最终判断需要看真实落地价。',
+    impact: '选择“预算不能超过 30 万”后，问界 M7 Pro 权重上升，理想 L8 高配下调。',
+    isRelevant: true
+  },
+  {
+    id: 's2_5',
+    title: '后期成本和保值压力大不大？',
+    dimensions: ['保值率 / 长期成本', '动力 / 能耗 / 续航'],
+    conclusion: '如果你很在意长期成本，需要把能耗、保值和售后一起看，而不是只看购车价。',
+    supportEvidence: '新能源车长期成本由能耗、保险、保值率和维修便利性共同决定。',
+    reverseReminder: '如果你计划 3 年内换车，保值权重应高于短期配置差异。',
+    impact: '长期成本权重提高时，系统会重新排列价格和风险证据。',
+    isRelevant: true
+  },
+  {
+    id: 's2_6',
+    title: '有没有不能接受的风险？',
+    dimensions: ['风险点 / 差评', '品牌 / 长期确定性'],
+    conclusion: '如果你不能接受品牌、售后或质量确定性风险，当前结论可能需要保守。',
+    supportEvidence: '高频差评、售后便利性和真实车主争议是决定“敢不敢买”的关键证据。',
+    reverseReminder: '如果这些风险你能接受，系统不应过度放大风险项。',
+    impact: '选择“我不接受某个风险”后，风险点会前置，并影响候选排序。',
+    isRelevant: true
   }
 ];
 
@@ -249,7 +380,7 @@ export const STAGE_2_EVIDENCES: DecisionEvidence[] = [
   {
     id: 'se5',
     sourceName: '车型库口碑雷达大数据',
-    question: '真实避坑审计，关于高速风燥以及车宽划痕，老旧口碑最严重的缺点有哪些？',
+    question: '真实避坑反馈，关于高速风噪声以及车宽划痕，口碑最严重的缺点有哪些？',
     conclusion: '如果绝对无法容忍高速风噪大以及馈电抖动，请避坑问界M7的增程震动；如果害怕窄车位卡死倒车轮毂擦伤并嫌质保期短，请谨慎衡量理想L8大车身体重',
     evidenceList: [
       { text: '问界M7口碑槽点：大样本库共1820条反馈，其中32%车主直言"120km/h高速下，A柱风噪及门板密封实测明显较同价位油车吵，且三排由于离尾门近胎噪偏响"', highlight: true },

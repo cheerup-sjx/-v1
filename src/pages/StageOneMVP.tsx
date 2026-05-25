@@ -23,8 +23,8 @@ import {
   Info
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { STAGE_1_CARS, STAGE_1_EVIDENCES } from '../data/mockData';
-import { CarInfo, DecisionEvidence } from '../types';
+import { STAGE_1_CARS, STAGE_1_DECISION_CHAIN, STAGE_2_PARAMS } from '../data/mockData';
+import { CarInfo, DecisionChainStep, ParameterRow } from '../types';
 
 interface StageOneProps {
   showToast: (msg: string, type?: 'success' | 'info' | 'warning') => void;
@@ -34,17 +34,13 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
   // Local state for candidates & their current status
   const [cars, setCars] = useState<CarInfo[]>(STAGE_1_CARS);
   
-  // Local state for preferences & user inputs
-  const [preferenceText, setPreferenceText] = useState('');
-  const [activePreferences, setActivePreferences] = useState<string[]>([
-    '注重华为ADS城区智驾',
-    '家庭周末经常搭乘6人'
-  ]);
+  // Local state for feedback interaction
+  const [selectedFeedbacks, setSelectedFeedbacks] = useState<string[]>([]);
   const [showExplanation, setShowExplanation] = useState(false);
 
-  // Evidence card expansion states (map of evidence ID to boolean)
-  const [expandedEvidence, setExpandedEvidence] = useState<Record<string, boolean>>({
-    'e1': true, // default first one expanded
+  // Decision chain step card expansion states
+  const [expandedDimensions, setExpandedDimensions] = useState<Record<string, boolean>>({
+    's1_1': true, // default first one expanded
   });
 
   // Flow Modals
@@ -58,23 +54,49 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
   const [renderStep, setRenderStep] = useState('');
   const [isRenderComplete, setIsRenderComplete] = useState(false);
   const [showCorrectionTip, setShowCorrectionTip] = useState(false);
+  const [showExtraCandidate, setShowExtraCandidate] = useState(false);
+  const [showDbOverlay, setShowDbOverlay] = useState(false);
+  const [activeParamTab, setActiveParamTab] = useState<'price' | 'space' | 'power' | 'intelligence' | 'risk'>('price');
 
-  const toggleEvidence = (id: string) => {
-    setExpandedEvidence(prev => ({
+  const activeParamsFiltered = STAGE_2_PARAMS.filter(p => p.category === activeParamTab);
+
+  const FEEDBACK_OPTIONS = [
+    '我更看重后排空间',
+    '预算不能超过30万',
+    '不考虑某个品牌',
+    '想加一台车继续比',
+    '我更在意智驾',
+    '不接受纯电里程焦虑',
+  ];
+
+  const toggleDimension = (id: string) => {
+    setExpandedDimensions(prev => ({
       ...prev,
       [id]: !prev[id]
     }));
   };
 
-  const toggleAllEvidences = () => {
-    const allIds = STAGE_1_EVIDENCES.map(e => e.id);
-    const anyCollapsed = allIds.some(id => !expandedEvidence[id]);
+  const toggleAllDimensions = () => {
+    const relevantChain = STAGE_1_DECISION_CHAIN.filter(d => d.isRelevant === undefined || d.isRelevant);
+    const allIds = relevantChain.map(d => d.id);
+    const anyCollapsed = allIds.some(id => !expandedDimensions[id]);
     const newState: Record<string, boolean> = {};
     allIds.forEach(id => {
       newState[id] = anyCollapsed;
     });
-    setExpandedEvidence(newState);
-    showToast(anyCollapsed ? '已全部展开核心决策依据' : '已全部收起核心决策依据', 'info');
+    setExpandedDimensions(newState);
+    showToast(anyCollapsed ? '已全部展开决策判断点' : '已全部收起决策判断点', 'info');
+  };
+
+  const toggleFeedback = (option: string) => {
+    setSelectedFeedbacks(prev => 
+      prev.includes(option)
+        ? prev.filter(o => o !== option)
+        : [...prev, option]
+    );
+    if (!selectedFeedbacks.includes(option)) {
+      showToast('已根据你的反馈重新调整候选排序', 'success');
+    }
   };
 
   // Background poster rendering effect
@@ -82,24 +104,24 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
     if (activeModal === '保存报告') {
       setIsRenderComplete(false);
       setRenderProgress(0);
-      setRenderStep('🔍 正在提取当前候选车型的智能评测系数与纠偏结论...');
+      setRenderStep('🔍 正在提取当前候选车型的比对细节与偏好要求...');
       
       const interval = setInterval(() => {
         setRenderProgress(prev => {
           if (prev >= 100) {
             clearInterval(interval);
             setIsRenderComplete(true);
-            setRenderStep('✅ 微信分享静态海报已在后台成功渲染！');
+            setRenderStep('✅ 静态分享海报已生成！');
             showToast('海报已生成就绪，您可长按或点击保存。', 'success');
             return 100;
           }
           const next = prev + 10;
           if (next === 30) {
-            setRenderStep('📊 正在拉取车型库Plus主网格以合成比对雷口...');
+            setRenderStep('📊 正在拉取数据库车型多维比对参数...');
           } else if (next === 60) {
-            setRenderStep('🎨 智能调色盘调色中：采用 “琥珀光感” 包置换极简模板...');
+            setRenderStep('🎨 生成精美布局：采用“琥珀光感”极简视觉模板...');
           } else if (next === 90) {
-            setRenderStep('🛡️ 正在注入安全口径验证暗号与对应微信小程序动态码...');
+            setRenderStep('🛡️ 正在注入安全口径验证与对应微信分享动态码...');
           }
           return next;
         });
@@ -126,20 +148,6 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
     showToast(`已将 ${carName.split(' ')[0]} 设为【${statusLabels[newStatus]}】状态`, 'info');
   };
 
-  const handleAddPreference = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!preferenceText.trim()) return;
-    setActivePreferences(prev => [...prev, preferenceText.trim()]);
-    showToast(`成功补充偏好条件: "${preferenceText.trim()}"`, 'success');
-    setPreferenceText('');
-  };
-
-  const handleRemovePreference = (index: number) => {
-    const textRemoved = activePreferences[index];
-    setActivePreferences(prev => prev.filter((_, i) => i !== index));
-    showToast(`已移除偏好: "${textRemoved}"`, 'info');
-  };
-
   // Groups cars by their keep status for the status overview
   const keeps = cars.filter(c => c.keepStatus === 'keep');
   const weakens = cars.filter(c => c.keepStatus === 'weaken');
@@ -152,162 +160,81 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-amber-500/10 via-amber-600/5 to-transparent rounded-2xl p-4 border border-amber-500/20"
+        className="ui-cot-block p-4 shadow-none"
         id="report-target-card"
       >
         <div className="flex items-start gap-2.5">
-          <div className="bg-amber-100 p-1.5 rounded-lg text-amber-700 mt-0.5">
-            <Sparkles className="w-4 h-4 fill-amber-500 stroke-amber-700" />
+          <div className="bg-[#E9EFFC] p-1.5 rounded-lg text-[#0353E9] mt-0.5 border border-[#D1D8E6]/50">
+            <Sparkles className="w-4 h-4 fill-[#0353E9]/20 stroke-[#0353E9]" />
           </div>
           <div className="flex-1">
-            <span className="text-[10px] font-bold text-amber-800 tracking-wider uppercase block mb-0.5">
-              💡 主站决策信号初始化报告 · MVP
+            <span className="text-[10px] font-bold text-[#0353E9] tracking-wider uppercase block mb-0.5">
+              💡 你的选车报告已生成
             </span>
-            <h1 className="text-sm font-bold text-slate-900 leading-snug">
-              诊断依据：您近7天在中高端中大型六座新能源SUV工具页停留时长超24分钟。重点关注 “智驾领航成本” 与 “二排独立舒适座椅”。
+            <h1 className="text-sm font-bold text-[#111E36] leading-snug">
+              你最近像是在比较30万级家庭新能源SUV，我们先帮你整理出这几台车该怎么取舍。重点关注 “智驾领航成本” 与 “二排独立舒适座椅”。
             </h1>
             
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              <span className="font-semibold text-slate-800">报告锁定目标：</span>
+            <p className="text-xs text-[#667085] mt-2 leading-relaxed">
+              <span className="font-semibold text-[#111E36]">报告锁定目标：</span>
               分析您在<strong> 问界M7、理想L8、腾势N8</strong> 之间的真实买点偏好与政策缺口，推进第一轮候选收缩。
             </p>
-
-            <div className="mt-3 flex items-center gap-2">
-              <button 
-                onClick={() => setShowExplanation(!showExplanation)}
-                className="text-xs font-semibold text-amber-800 underline flex items-center gap-1 active:text-amber-950"
-                id="view-diagnose-details"
-              >
-                {showExplanation ? '收起主站原始轨迹' : '查看数据采集与判定来源 ⚙️'}
-              </button>
-            </div>
-
-            {/* Parallel verification indicator buttons */}
-            <div className="mt-3.5 pt-3.5 border-t border-amber-500/10 grid grid-cols-2 gap-2">
-              <button 
-                onClick={() => {
-                  showToast('报告命中确认，继续为您推进决策...', 'success');
-                }}
-                className="py-2.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center gap-1-some focus:ring-2 focus:ring-amber-500"
-                id="hit-confirm-yes"
-              >
-                ✓ 这说的是我
-              </button>
-              <button 
-                onClick={() => {
-                  setShowCorrectionTip(true);
-                  showToast('请在下方补充偏好，系统将重新调整', 'info');
-                  const el = document.getElementById('override-text-input');
-                  if (el) {
-                    el.focus();
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }
-                }}
-                className="py-2.5 bg-white hover:bg-[#FAF9F5]/80 active:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-2xs transition-colors flex items-center justify-center gap-1"
-                id="hit-confirm-no"
-              >
-                不太准确
-              </button>
-            </div>
-
-            {/* Lightweight correction hint panel */}
-            <AnimatePresence>
-              {showCorrectionTip && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden mt-2.5 p-2.5 bg-[#FAF9F5]/90 border border-amber-200/50 rounded-xl text-[11px] text-amber-800 leading-relaxed font-semibold shadow-2xs"
-                >
-                  💡 <strong>请在下方补充偏好，系统将重新调整</strong>：可使用下方的自选偏好补充功能追加您的个性要素，评估结论会自愈对齐。
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </div>
-
-        {/* Diagnostic raw event list */}
-        <AnimatePresence>
-          {showExplanation && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden mt-3 pt-3 border-t border-amber-500/10 text-[11px] text-slate-600 space-y-1.5 font-mono"
-            >
-              <div className="flex justify-between text-slate-400">
-                <span>触发事件</span>
-                <span>发生频率/时长</span>
-              </div>
-              <div className="flex justify-between bg-white/50 px-2 py-0.5 rounded">
-                <span>🔍 车系PK：问界M7 vs 理想L8</span>
-                <span>对比活跃3次</span>
-              </div>
-              <div className="flex justify-between bg-white/50 px-2 py-0.5 rounded">
-                <span>📑 参排停留：二排空间及魔毯架构</span>
-                <span>4.8 分钟停留</span>
-              </div>
-              <div className="flex justify-between bg-white/50 px-2 py-0.5 rounded">
-                <span>💬 口碑页：“智驾版溢价”/“OTA体验”</span>
-                <span>极度敏感 / 3次标签筛选</span>
-              </div>
-              <div className="flex items-center gap-1 text-slate-500 mt-1">
-                <AlertCircle className="w-3.5 h-3.5" />
-                <span>仅捕获脱敏行为链，未关联任何敏感实名信息</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
 
       {/* 2. 用户状态与待确认项目台 */}
-      <div className="bg-white rounded-2xl p-4 shadow-xs border border-slate-100 space-y-3" id="user-status-card">
-        <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
-          <div>
-            <span className="text-xs text-slate-500 block">系统研判当前决策阶段</span>
+      <div className="ui-card-main p-4 space-y-3" id="user-status-card">
+        <div className="bg-[#FFFDF5]/70 p-2.5 rounded-xl border-l-2 border-amber-400 mb-3 text-xs text-slate-700 leading-relaxed font-sans">
+          你更像是在选一台30万级家庭新能源SUV：平时以家用为主，可能更关注后排舒适、智驾体验和落地价的稳定性。
+        </div>
+
+        <div className="flex justify-between items-center bg-[#F4F6F9] p-2.5 rounded-xl border border-[#D1D8E6]/50 gap-3">
+          <div className="min-w-0 flex-1">
+            <span className="text-[11px] text-[#667085] block font-sans">你现在大概卡在这一步</span>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-              <span className="text-sm font-bold text-slate-800">多车 Battle / 候选收缩 🏁</span>
+              <span className="w-2 h-2 rounded-full bg-[#0353E9] animate-pulse shrink-0"></span>
+              <span className="text-xs font-bold text-[#111E36] leading-tight block truncate md:whitespace-normal">这几台车都能买，但还没确定谁最适合家用</span>
             </div>
           </div>
-          <div className="text-right">
-            <span className="text-[10px] text-slate-400 block font-mono">CONFIDENCE</span>
-            <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded">
+          <div className="text-right shrink-0">
+            <span className="text-[9px] text-[#98A2B3] block font-mono leading-none mb-1">CONFIDENCE</span>
+            <span className="text-[10px] font-bold badge-green px-2 py-1 rounded-md whitespace-nowrap">
               92% 很高
             </span>
           </div>
         </div>
 
         <div className="space-y-1">
-          <span className="text-xs font-bold text-slate-700 block">🕵️‍♂️ 您的核心纠结点研判：</span>
-          <p className="text-xs text-slate-600 bg-[#FAF9F5] p-2 rounded-xl border-l-2 border-amber-500 leading-relaxed font-medium">
-            &ldquo;30万高意向预算，高频带娃、喜欢无感智驾，理想L8二排高级舒适性是否值得为Max版本妥协？还是直接买问界M7的基础智驾包更省预算？&rdquo;
+          <span className="text-xs font-bold text-[#111E36] block">🕵️‍♂️ 你现在主要还没确认这几件事：</span>
+          <p className="text-xs text-[#B54708] bg-[#FFFAEB] p-2.5 rounded-lg border-l-[3px] border-[#B54708] leading-relaxed font-semibold">
+            &ldquo;想买台30万左右带娃舒服的新能源车，又想要好阶智驾。多花几万去买理想L8，享受二排大沙发跟城区无图智驾到底值不值？还是简单点，直接买更省钱的问界M7，用基础智驾把这8万块钱省下来？&rdquo;
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-2 mt-2">
-          <div className="border border-slate-100 bg-[#fbfcfd] p-2.5 rounded-xl">
-            <span className="text-xs font-bold text-slate-700 block mb-1">🛒 潜在待确认项</span>
-            <ul className="text-[11px] text-slate-600 space-y-1 list-disc pl-3 leading-snug">
-              <li>不同智驾版本真实开通溢价</li>
-              <li>车长超5.1米对自用车位限制</li>
-              <li>二排儿童安全座椅拆装过道</li>
+          <div className="border border-[#D1D8E6] bg-[#FFFFFF] p-2.5 rounded-lg">
+            <span className="text-xs font-bold text-[#111E36] block mb-1">🛒 还没想透的几点现实问题</span>
+            <ul className="text-[11px] text-[#667085] space-y-1 list-disc pl-3 leading-snug font-sans">
+              <li>不同版本的智驾差价格外多花几万值不值</li>
+              <li>5.1米多的大车在自家车位和老小区好不好停</li>
+              <li>装上安全座椅后，后排坐大人或者进出方不方便</li>
             </ul>
           </div>
-          <div className="border border-slate-100 bg-[#fbfcfd] p-2.5 rounded-xl">
-            <span className="text-xs font-bold text-slate-700 block mb-1">📉 当前状态分布</span>
+          <div className="border border-[#D1D8E6] bg-[#FFFFFF] p-2.5 rounded-lg">
+            <span className="text-xs font-bold text-[#111E36] block mb-1">📉 当前状态分布</span>
             <div className="space-y-1 mt-1 text-[11px]">
               <div className="flex justify-between">
-                <span className="text-slate-500">主力保留:</span>
-                <span className="font-bold text-green-600 font-mono">{keeps.length}款</span>
+                <span className="text-[#667085]">重点看:</span>
+                <span className="font-bold text-[#039855] font-mono">{keeps.length}款</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">可能弱化:</span>
-                <span className="font-bold text-slate-500 font-mono">{weakens.length}款</span>
+                <span className="text-[#667085]">先放一边:</span>
+                <span className="font-bold text-[#667085] font-mono">{weakens.length}款</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">主动排除:</span>
-                <span className="font-bold text-red-500 font-mono">{excludes.length}款</span>
+                <span className="text-[#667085]">暂不考虑:</span>
+                <span className="font-bold text-[#D92D20] font-mono">{excludes.length}款</span>
               </div>
             </div>
           </div>
@@ -316,49 +243,49 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
 
       {/* 3. 候选状态 / 候选收缩卡（核心保留、弱化、排除互动） */}
       <div className="space-y-1.5" id="candidate-shrink-card">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-sm font-bold text-slate-800 flex items-center gap-1">
-            <Layers className="w-4 h-4 text-slate-600" />
-            候选车型梯度决策台
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 px-1">
+          <h2 className="text-xs font-bold text-[#111E36] flex items-center gap-1.5 font-sans">
+            <Layers className="w-3.5 h-3.5 text-slate-500" />
+            这几台车，我建议你这样处理
           </h2>
-          <span className="text-[10px] text-slate-500 font-medium">
-            点击标签可手动更改收缩状态
+          <span className="text-[10.5px] text-[#667085] font-normal font-sans">
+            可以随时调整你对每台车的判断
           </span>
         </div>
 
         <div className="space-y-2">
-          {cars.map((car) => (
+          {cars.filter(car => car.id !== 'n8').map((car) => (
             <div 
               key={car.id} 
-              className={`bg-white rounded-2xl border transition-all duration-300 shadow-xs ${
+              className={`ui-card-main transition-all duration-300 shadow-none ${
                 car.keepStatus === 'keep' 
-                  ? 'border-l-4 border-l-amber-500 border-slate-100 opacity-100' 
+                  ? 'border-l-[4px] border-l-[#039855] opacity-100' 
                   : car.keepStatus === 'weaken' 
-                  ? 'border-l-4 border-l-slate-400 border-slate-200 opacity-80 scale-[0.98]' 
-                  : 'border-l-4 border-l-red-400 border-slate-200 opacity-50 scale-[0.96] saturate-[0.2]'
-              }`}
+                  ? 'border-l-[4px] border-l-[#98A2B3] opacity-80 scale-[0.98]' 
+                  : 'border-l-[4px] border-l-[#D92D20] opacity-50 scale-[0.96] saturate-[0.2]'
+               }`}
             >
               <div className="p-3">
                 <div className="flex gap-2.5">
                   <img 
                     src={car.image} 
                     alt={car.name} 
-                    className="w-16 h-12 object-cover rounded-lg bg-slate-100 border border-slate-200 shadow-2xs self-center"
+                    className="w-16 h-12 object-cover rounded-lg bg-slate-100 border border-[#D1D8E6] shadow-none self-center"
                     referrerPolicy="no-referrer"
                   />
                   <div className="flex-1">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="text-[10px] font-bold text-slate-400 block">{car.brand}</span>
-                        <h3 className="text-xs font-bold text-slate-900 leading-tight">{car.name}</h3>
+                        <span className="text-[10px] font-bold text-[#98A2B3] block">{car.brand}</span>
+                        <h3 className="text-xs font-bold text-[#111E36] leading-tight font-sans">{car.name}</h3>
                       </div>
-                      <span className="text-[11px] font-bold text-red-600 font-mono">{car.guidePrice}</span>
+                      <span className="text-[11px] font-bold text-[#D92D20] font-mono">{car.guidePrice}</span>
                     </div>
 
-                    <p className="text-[11px] text-slate-600 font-medium mt-1 leading-snug">
-                      🎯 当前策略：
-                      <span className={`px-1.5 py-0.2 rounded-md font-bold ${
-                        car.keepStatus === 'keep' ? 'bg-amber-50 text-amber-700' : car.keepStatus === 'weaken' ? 'bg-slate-100 text-slate-600' : 'bg-red-50 text-red-700'
+                    <p className="text-[11px] text-[#667085] font-medium mt-1 leading-snug">
+                      🎯 建议：
+                      <span className={`px-1.5 py-0.5 rounded font-bold ${
+                        car.keepStatus === 'keep' ? 'badge-green border-none' : car.keepStatus === 'weaken' ? 'badge-gray border-none' : 'badge-red border-none'
                       }`}>
                         {car.decisionRole}
                       </span>
@@ -367,53 +294,55 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
                 </div>
 
                 {/* Keep reasons / Avoid conditions depending on status */}
-                <div className="mt-2 bg-slate-50/70 p-2 rounded-xl text-[11px] leading-relaxed text-slate-600">
+                <div className={`mt-2 p-2.5 rounded-lg text-[11px] leading-relaxed ${
+                  car.keepStatus !== 'exclude' ? 'bg-[#ECFDF3]/50 text-[#039855] border-l-[3px] border-l-[#039855]' : 'bg-[#FEF3F2]/60 text-[#D92D20] border-l-[3px] border-l-[#D92D20]'
+                }`}>
                   {car.keepStatus !== 'exclude' ? (
                     <p>
-                      <span className="font-semibold text-slate-800 text-[10px] text-amber-700">推荐理由：</span>
-                      {car.keepReason}
+                      <span className="font-semibold text-[10px] text-[#039855] block mb-0.5">推荐理由：</span>
+                      <span className="text-[#111E36]">{car.keepReason}</span>
                     </p>
                   ) : (
                     <p>
-                      <span className="font-semibold text-red-700 text-[10px]">避坑提醒：</span>
-                      {car.riskWarning}
+                      <span className="font-semibold text-[10px] text-[#D92D20] block mb-0.5">避坑提醒：</span>
+                      <span className="text-[#111E36]">{car.riskWarning}</span>
                     </p>
                   )}
                 </div>
 
                 {/* Row of interactive action togglers */}
-                <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
-                  <span className="text-[10px] text-slate-400">调整策略指向:</span>
-                  <div className="flex gap-1">
+                <div className="mt-2.5 pt-2 border-t border-[#D1D8E6]/40 flex items-center justify-between gap-1.5">
+                  <span className="text-[10px] text-[#98A2B3]">修改选择:</span>
+                  <div className="flex gap-1.5">
                     <button 
                       onClick={() => handleStatusChange(car.id, 'keep')}
-                      className={`text-[10px] font-medium leading-none px-2.5 py-1 rounded-full border transition-all ${
+                      className={`text-[10px] font-medium leading-none px-2.5 py-1.5 rounded-full border transition-all ${
                         car.keepStatus === 'keep' 
-                          ? 'bg-amber-50 text-amber-700 border-amber-300 shadow-2xs font-bold' 
-                          : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'
+                          ? 'badge-green font-bold border-[#039855]' 
+                          : 'bg-white hover:bg-slate-50 text-[#667085] border-[#D1D8E6]'
                       }`}
                     >
-                      保留候选
+                      重点看这台
                     </button>
                     <button 
                       onClick={() => handleStatusChange(car.id, 'weaken')}
-                      className={`text-[10px] font-medium leading-none px-2.5 py-1 rounded-full border transition-all ${
+                      className={`text-[10px] font-medium leading-none px-2.5 py-1.5 rounded-full border transition-all ${
                         car.keepStatus === 'weaken' 
-                          ? 'bg-slate-200 text-slate-800 border-slate-300 font-bold' 
-                          : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'
+                          ? 'badge-gray font-bold text-[#667085] border-slate-400' 
+                          : 'bg-white hover:bg-slate-50 text-[#667085] border-[#D1D8E6]'
                       }`}
                     >
-                      弱化备选
+                      先放一边
                     </button>
                     <button 
                       onClick={() => handleStatusChange(car.id, 'exclude')}
-                      className={`text-[10px] font-medium leading-none px-2.5 py-1 rounded-full border transition-all ${
+                      className={`text-[10px] font-medium leading-none px-2.5 py-1.5 rounded-full border transition-all ${
                         car.keepStatus === 'exclude' 
-                          ? 'bg-red-50 text-red-700 border-red-200 font-bold' 
-                          : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'
+                          ? 'badge-red font-bold border-[#D92D20]' 
+                          : 'bg-white hover:bg-slate-50 text-[#667085] border-[#D1D8E6]'
                       }`}
                     >
-                      排除此车
+                      暂不考虑
                     </button>
                   </div>
                 </div>
@@ -421,94 +350,254 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
               </div>
             </div>
           ))}
+
+          {/* 折叠区域标题 */}
+          <div 
+            onClick={() => setShowExtraCandidate(!showExtraCandidate)}
+            className="text-[11px] text-slate-500 text-center py-2 border-t border-slate-100 cursor-pointer flex items-center justify-center gap-1 hover:text-[#0353E9] transition-colors font-sans"
+            id="fold-trigger-segment"
+          >
+            <span>还有其他候选车？{showExtraCandidate ? '点击收起' : '点击展开'}</span>
+            <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${showExtraCandidate ? 'rotate-180' : ''}`} />
+          </div>
+
+          {/* 展开后显示的腾势 N8 卡片 */}
+          <AnimatePresence>
+            {showExtraCandidate && (
+              <motion.div
+                key="extra-candidate-content"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                {cars.filter(car => car.id === 'n8').map((car) => (
+                  <div 
+                    key={car.id} 
+                    className={`ui-card-main transition-all duration-300 shadow-none opacity-70 border border-[#D1D8E6] rounded-2xl ${
+                      car.keepStatus === 'keep' 
+                        ? 'border-l-[4px] border-l-[#039855]' 
+                        : car.keepStatus === 'weaken' 
+                        ? 'border-l-[4px] border-l-[#98A2B3] scale-[0.98]' 
+                        : 'border-l-[4px] border-l-[#D92D20] scale-[0.96] saturate-[0.2]'
+                     }`}
+                  >
+                    <div className="p-3">
+                      <div className="flex gap-2.5">
+                        <img 
+                          src={car.image} 
+                          alt={car.name} 
+                          className="w-16 h-12 object-cover rounded-lg bg-slate-100 border border-[#D1D8E6] shadow-none self-center"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="text-[10px] font-bold text-[#98A2B3] block">{car.brand}</span>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h3 className="text-xs font-bold text-[#111E36] leading-tight font-sans">{car.name}</h3>
+                                <span className="bg-slate-100 text-[#667085] text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0">
+                                  备选
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[11px] font-bold text-[#D92D20] font-mono">{car.guidePrice}</span>
+                          </div>
+
+                          <p className="text-[11px] text-[#667085] font-medium mt-1 leading-snug">
+                            🎯 建议：
+                            <span className={`px-1.5 py-0.5 rounded font-bold ${
+                              car.keepStatus === 'keep' ? 'badge-green border-none' : car.keepStatus === 'weaken' ? 'badge-gray border-none' : 'badge-red border-none'
+                            }`}>
+                              {car.decisionRole}
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Keep reasons / Avoid conditions depending on status */}
+                      <div className={`mt-2 p-2.5 rounded-lg text-[11px] leading-relaxed ${
+                        car.keepStatus !== 'exclude' ? 'bg-[#ECFDF3]/50 text-[#039855] border-l-[3px] border-l-[#039855]' : 'bg-[#FEF3F2]/60 text-[#D92D20] border-l-[3px] border-l-[#D92D20]'
+                      }`}>
+                        {car.keepStatus !== 'exclude' ? (
+                          <p>
+                            <span className="font-semibold text-[10px] text-[#039855] block mb-0.5">推荐理由：</span>
+                            <span className="text-[#111E36]">{car.keepReason}</span>
+                          </p>
+                        ) : (
+                          <p>
+                            <span className="font-semibold text-[10px] text-[#D92D20] block mb-0.5">避坑提醒：</span>
+                            <span className="text-[#111E36]">{car.riskWarning}</span>
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Row of interactive action togglers */}
+                      <div className="mt-2.5 pt-2 border-t border-[#D1D8E6]/40 flex items-center justify-between gap-1.5">
+                        <span className="text-[10px] text-[#98A2B3]">修改选择:</span>
+                        <div className="flex gap-1.5">
+                          <button 
+                            onClick={() => handleStatusChange(car.id, 'keep')}
+                            className={`text-[10px] font-medium leading-none px-2.5 py-1.5 rounded-full border transition-all ${
+                              car.keepStatus === 'keep' 
+                                ? 'badge-green font-bold border-[#039855]' 
+                                : 'bg-white hover:bg-slate-50 text-[#667085] border-[#D1D8E6]'
+                            }`}
+                          >
+                            重点看这台
+                          </button>
+                          <button 
+                            onClick={() => handleStatusChange(car.id, 'weaken')}
+                            className={`text-[10px] font-medium leading-none px-2.5 py-1.5 rounded-full border transition-all ${
+                              car.keepStatus === 'weaken' 
+                                ? 'badge-gray font-bold text-[#667085] border-slate-400' 
+                                : 'bg-white hover:bg-slate-50 text-[#667085] border-[#D1D8E6]'
+                            }`}
+                          >
+                            先放一边
+                          </button>
+                          <button 
+                            onClick={() => handleStatusChange(car.id, 'exclude')}
+                            className={`text-[10px] font-medium leading-none px-2.5 py-1.5 rounded-full border transition-all ${
+                              car.keepStatus === 'exclude' 
+                                ? 'badge-red font-bold border-[#D92D20]' 
+                                : 'bg-white hover:bg-slate-50 text-[#667085] border-[#D1D8E6]'
+                            }`}
+                          >
+                            暂不考虑
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       {/* 4. 决策证据卡 MVP （展示3个关键证据，高度紧凑） */}
       <div className="space-y-1.5" id="decision-evidence-scroller">
-        <div className="flex justify-between items-center px-1">
-          <h2 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
-            <CheckCircle className="w-4 h-4 text-amber-600" />
-            首期命中验证 · 核心决策依据
-          </h2>
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-1">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 font-sans leading-none">
+              <CheckCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              基于你的需求，先拆成这几个判断点
+            </h2>
+            <p className="text-[10px] text-slate-400 mt-1 font-sans leading-relaxed">
+              你现在像是在选一台 30 万级家庭新能源 SUV，所以不用先看全量参数，先看这几件事就能缩小范围。
+            </p>
+          </div>
           <button 
-            onClick={toggleAllEvidences}
-            className="text-[11px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded hover:bg-amber-100 transition-colors"
+            type="button"
+            onClick={toggleAllDimensions}
+            className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded hover:bg-amber-100 transition-colors font-sans whitespace-nowrap shrink-0 self-start mt-0.5 animate-pulse"
           >
             展开/收起全部
           </button>
         </div>
 
-        <div className="space-y-2">
-          {STAGE_1_EVIDENCES.map((evidence) => {
-            const isExpanded = !!expandedEvidence[evidence.id];
+        <div className="space-y-2.5 mt-2">
+          {STAGE_1_DECISION_CHAIN.map((step, idx) => {
+            const isExpanded = !!expandedDimensions[step.id];
             return (
               <div 
-                key={evidence.id} 
-                className="bg-white rounded-2xl border border-slate-100 shadow-2xs overflow-hidden"
+                key={step.id} 
+                className="bg-white rounded-2xl border border-slate-100 shadow-2xs overflow-hidden mb-2"
               >
-                {/* Header of evidence */}
+                {/* Header of step */}
                 <div 
-                  onClick={() => toggleEvidence(evidence.id)}
+                  onClick={() => toggleDimension(step.id)}
                   className="p-3 flex items-start justify-between gap-2.5 cursor-pointer hover:bg-slate-50/50 transition-colors"
                 >
-                  <div className="space-y-0.5 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                        问题 {evidence.id.toUpperCase()}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100 font-sans whitespace-nowrap">
+                        判断点 {idx + 1}
                       </span>
-                      <span className="text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-100">
-                        {evidence.sourceName}
+                      <span className="text-xs font-bold text-[#111E36] font-sans">
+                        {step.title}
                       </span>
                     </div>
-                    <h3 className="text-xs font-bold text-slate-800 leading-snug">
-                      {evidence.question}
-                    </h3>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {step.dimensions.map((dimName) => (
+                        <span key={dimName} className="text-[9px] text-[#667085] bg-slate-100 px-1.5 py-0.5 rounded font-sans">
+                          {dimName}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-slate-400 mt-1 self-center">
+                  <div className="text-slate-400 mt-1 self-center shrink-0">
                     {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   </div>
                 </div>
 
-                {/* Expanded facts & actions */}
+                {/* Expanded content area */}
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div 
-                      initial={{ height: 0 }}
-                      animate={{ height: 'auto' }}
-                      exit={{ height: 0 }}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden bg-slate-50/40 border-t border-slate-100"
                     >
-                      <div className="p-3 text-[11px] space-y-2 text-slate-600">
-                        <div className="bg-amber-500/5 p-2 rounded-xl border-l-2 border-amber-400 text-slate-800 font-medium leading-relaxed">
-                          🏁 AI 定理判断：{evidence.conclusion}
-                        </div>
-                        
-                        <div className="space-y-1.5 mt-2">
-                          <span className="font-semibold text-slate-700 text-[10px] block uppercase">
-                            ✓ 汽车之家客观参配比对信息
-                          </span>
-                          {evidence.evidenceList.map((item, idx) => (
-                            <div key={idx} className="flex gap-1.5 items-start">
-                              <span className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 flex-shrink-0"></span>
-                              <p className={`leading-relaxed ${item.highlight ? 'text-indigo-900 font-medium' : ''}`}>
-                                {item.text}
-                              </p>
-                            </div>
-                          ))}
+                      <div className="p-3 space-y-2.5">
+                        {/* 一句话结论 */}
+                        <div className="p-2 py-1.5 bg-amber-500/5 rounded-xl border-l-[3px] border-l-amber-400 text-[11px] font-medium leading-relaxed font-sans text-slate-800">
+                          <span className="font-bold text-amber-800 block text-[10px] mb-0.5">结论：</span>
+                          {step.conclusion}
                         </div>
 
-                        {/* Direct action based on the evidence */}
-                        <div className="pt-2 flex justify-end">
-                          <button 
-                            onClick={() => {
-                              showToast(`正在为您在后台加载并回源车系详情以校验事实...`, 'success');
-                            }}
-                            className="text-[10px] font-bold text-slate-600 hover:text-amber-800 transition-colors flex items-center gap-0.5 hover:underline"
-                          >
-                            <Info className="w-3.5 h-3.5" />
-                            回源车型库核实参数 ↗
-                          </button>
+                        {/* 支持推荐的证据 */}
+                        <div>
+                          <span className="inline-block text-[10px] font-bold text-green-700 bg-green-50 px-1.5 rounded mb-1 font-sans">
+                            ✓ 支持证据
+                          </span>
+                          <p className="text-[11px] text-slate-600 leading-relaxed font-sans">
+                            {step.supportEvidence}
+                          </p>
+                        </div>
+
+                        {/* 反向提醒 / 风险提示 */}
+                        <div>
+                          <span className="inline-block text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 rounded mb-1 font-sans">
+                            ⚠ 反向提醒
+                          </span>
+                          <p className="text-[11px] text-[#B54708] leading-relaxed font-sans">
+                            {step.reverseReminder}
+                          </p>
+                        </div>
+
+                        {/* 对候选车的影响 */}
+                        <div className="pt-2 border-t border-slate-100/60 space-y-2 text-[10.5px] text-slate-500 font-sans">
+                          <div className="flex items-start gap-1.5 w-full">
+                            <span className="font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded text-[9.5px] shrink-0 mt-0.5">影响</span>
+                            <span className="leading-relaxed text-[#475467]">{step.impact}</span>
+                          </div>
+                          
+                          <div className="flex justify-end pt-0.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                let nextTab: 'price' | 'space' | 'power' | 'intelligence' | 'risk' = 'price';
+                                if (step.id === 's1_1') nextTab = 'space';
+                                else if (step.id === 's1_2') nextTab = 'intelligence';
+                                else if (step.id === 's1_3') nextTab = 'price';
+                                else if (step.id === 's1_4') nextTab = 'risk';
+                                
+                                setActiveParamTab(nextTab);
+                                setShowDbOverlay(true);
+                                showToast(`正在从官方车型库拉取“${step.title}”相关的核心参数比对事实...`, 'info');
+                              }}
+                              className="text-[10px] text-[#0353E9] hover:text-[#023eaf] flex items-center gap-1 font-bold font-sans cursor-pointer hover:underline bg-[#F4F6F9] hover:bg-slate-100 px-2 py-1 rounded-md border border-[#D1D8E6]/60 transition-colors shrink-0"
+                            >
+                              <span>ℹ️ 回源车型库核实参数</span>
+                              <span className="text-[10px] leading-none shrink-0 text-[#0353E9]">↗</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -521,59 +610,65 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
       </div>
 
       {/* 5. 轻量反馈输入：自选偏好补充 */}
-      <div className="bg-[#FAF9F5] rounded-2xl p-4 border border-amber-200/50 space-y-3">
-        <div className="space-y-0.5">
-          <h3 className="text-xs font-bold text-slate-800 flex items-center gap-1">
-            ✨ 轻量反馈：偏好自纠偏
+      <div className="bg-[#FFFAEB] border border-[#FEDF89] rounded-xl p-4" id="feedback-interaction-card">
+        <div>
+          <h3 className="text-xs font-bold text-slate-800 font-sans">
+            这份判断哪里不符合你的情况？
           </h3>
-          <p className="text-[11px] text-slate-500">
-            觉得系统判断不够完美？请修改或一句话补充，系统将自动更正。
+          <p className="text-[11px] text-slate-400 mt-0.5 font-sans">
+            可以多选，再次点击取消
           </p>
         </div>
 
-        {/* Existing bullet list */}
-        {activePreferences.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {activePreferences.map((pref, i) => (
-              <span 
-                key={i} 
-                className="text-[10.5px] font-medium text-slate-700 bg-white border border-slate-200 rounded-full pl-2 pr-1.5 py-0.5 flex items-center gap-1"
+        {/* 选项标签区 */}
+        <div className="flex flex-wrap gap-2 mt-3">
+          {FEEDBACK_OPTIONS.map((option) => {
+            const isSelected = selectedFeedbacks.includes(option);
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => toggleFeedback(option)}
+                className={isSelected 
+                  ? "text-[11px] px-3 py-1.5 rounded-full border border-amber-400 bg-amber-50 text-amber-800 font-bold cursor-pointer transition-all font-sans"
+                  : "text-[11px] px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 cursor-pointer hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 transition-all font-sans"
+                }
               >
-                {pref}
-                <button 
-                  onClick={() => handleRemovePreference(i)}
-                  className="rounded-full p-0.5 hover:bg-slate-100 text-slate-400 active:text-red-600"
-                  title="Remove override"
+                {option}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 已选中标签展示区 */}
+        {selectedFeedbacks.length > 0 && (
+          <div className="border-t border-slate-100 pt-3 mt-3">
+            <h4 className="text-[10px] text-slate-400 mb-2 font-sans">已选择的条件：</h4>
+            <div className="flex flex-wrap gap-1.5">
+              {selectedFeedbacks.map((option) => (
+                <span 
+                  key={option}
+                  className="text-[10.5px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-full pl-2.5 pr-1.5 py-0.5 flex items-center gap-1 font-sans"
                 >
-                  <Plus className="w-3 h-3 rotate-45 stroke-[3]" />
-                </button>
-              </span>
-            ))}
+                  {option}
+                  <button 
+                    type="button"
+                    onClick={() => toggleFeedback(option)}
+                    className="rounded-full p-0.5 hover:bg-amber-100 text-amber-600 w-3.5 h-3.5 flex items-center justify-center font-sans font-bold cursor-pointer"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
           </div>
         )}
-
-        <form onSubmit={handleAddPreference} className="flex gap-1.5">
-          <input 
-            type="text" 
-            placeholder="例如：“我不考虑理想因为纯电里程还太少” 或 “预算改32万”"
-            value={preferenceText}
-            onChange={(e) => setPreferenceText(e.target.value)}
-            className="flex-1 text-xs px-3 py-2 bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 focus:border-amber-500 placeholder-slate-400 text-slate-700"
-            id="override-text-input"
-          />
-          <button 
-            type="submit" 
-            className="text-xs font-bold bg-slate-800 text-white px-3.5 py-2 rounded-xl active:bg-slate-900 flex items-center gap-1 hover:bg-slate-700 transition"
-          >
-            提交纠偏
-          </button>
-        </form>
       </div>
 
       {/* 6. 最短决策动作区 */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-150/80 flex flex-col gap-2.5" id="stage-one-actions">
-        <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider text-center block">
-          ⚡ 推进买车最短闭环动作
+      <div className="ui-card-main p-4 flex flex-col gap-2.5 shadow-none" id="stage-one-actions">
+        <span className="text-[10px] text-[#98A2B3] uppercase font-black tracking-wider text-center block font-sans">
+          ⚡ 接下来可以做这几件事
         </span>
 
         <div className="grid grid-cols-3 gap-2">
@@ -583,11 +678,11 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
               setActiveModal('落地价');
               showToast('正在为您抓取上海市各大经销商落地计算价...', 'info');
             }}
-            className="flex flex-col items-center justify-center p-2.5 text-center bg-[#FAF9F5]/90 hover:bg-[#FAF9F5] border border-amber-200/50 text-slate-800 rounded-xl active:scale-95 transition-transform"
+            className="flex flex-col items-center justify-center p-1.5 xs:p-2 sm:p-2.5 text-center bg-white hover:bg-[#F4F6F9] border border-[#D1D8E6] text-[#111E36] rounded-xl active:scale-95 transition-all shadow-none"
             id="action-view-local-price"
           >
-            <span className="font-bold text-[11px] sm:text-xs">查看本地落地价</span>
-            <span className="text-[8.5px] text-slate-400 mt-0.5">叠加置换补贴</span>
+            <span className="font-bold text-[9.5px] xs:text-[11px] sm:text-xs whitespace-nowrap tracking-tighter xs:tracking-normal">查看本地落地价</span>
+            <span className="text-[8.5px] text-[#667085] mt-0.5 whitespace-nowrap">叠加置换补贴</span>
           </button>
 
           {/* Action 2 */}
@@ -596,11 +691,11 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
               setActiveModal('预约试驾');
               showToast('请选择目标车型，极速安排销售送车上门...', 'info');
             }}
-            className="flex flex-col items-center justify-center p-2.5 text-center bg-[#FAF9F5]/90 hover:bg-[#FAF9F5] border border-amber-200/50 text-slate-800 rounded-xl active:scale-95 transition-transform"
+            className="flex flex-col items-center justify-center p-1.5 xs:p-2 sm:p-2.5 text-center bg-white hover:bg-[#F4F6F9] border border-[#D1D8E6] text-[#111E36] rounded-xl active:scale-95 transition-all shadow-none"
             id="action-book-test-drive"
           >
-            <span className="font-bold text-[11px] sm:text-xs">预约试驾</span>
-            <span className="text-[8.5px] text-slate-400 mt-0.5">送车上门体验</span>
+            <span className="font-bold text-[9.5px] xs:text-[11px] sm:text-xs whitespace-nowrap tracking-tighter xs:tracking-normal">预约试驾</span>
+            <span className="text-[8.5px] text-[#667085] mt-0.5 whitespace-nowrap">送车上门体验</span>
           </button>
 
           {/* Action 3 */}
@@ -609,11 +704,11 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
               setActiveModal('保存报告');
               showToast('报告状态库已就绪，正在渲染微信名片海报...', 'success');
             }}
-            className="flex flex-col items-center justify-center p-2.5 text-center bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl active:scale-95 transition-transform shadow-2xs"
+            className="flex flex-col items-center justify-center p-1.5 xs:p-2 sm:p-2.5 text-center bg-[#0353E9] hover:bg-blue-700 text-white rounded-xl active:scale-95 transition-all shadow-none"
             id="action-save-report"
           >
-            <span className="font-bold text-[11px] sm:text-xs">保存报告</span>
-            <span className="text-[8.5px] text-white/90 mt-0.5">生成分享海报</span>
+            <span className="font-bold text-[9.5px] xs:text-[11px] sm:text-xs whitespace-nowrap tracking-tighter xs:tracking-normal">保存报告</span>
+            <span className="text-[8.5px] text-white/95 mt-0.5 whitespace-nowrap">生成分享海报</span>
           </button>
         </div>
       </div>
@@ -644,9 +739,9 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
               {/* Local Land Price modal */}
               {activeModal === '落地价' && (
                 <div className="space-y-3">
-                  <div className="text-center pb-2 border-b border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-800">上海市本地特惠提车价测算</h3>
-                    <p className="text-[11px] text-slate-500">已自动叠加上海市置换促消补贴及金融贴息</p>
+                  <div className="text-left md:text-center pb-2 border-b border-slate-100 pr-10 pl-1">
+                    <h3 className="text-sm font-bold text-slate-800 leading-snug">{userCity}本地特惠提车价测算</h3>
+                    <p className="text-[11px] text-slate-500 mt-1">已自动叠加该城市置换促销补贴及金融贴息</p>
                   </div>
                   
                   <div className="space-y-2.5">
@@ -716,9 +811,9 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
               {/* Book Test Drive Modal */}
               {activeModal === '预约试驾' && (
                 <div className="space-y-3">
-                  <div className="text-center pb-2 border-b border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-800">上门送车极致试驾服务预约</h3>
-                    <p className="text-[11px] text-slate-500">专业评测团持证司机，随车携带原厂婴儿安全座椅供现场测试</p>
+                  <div className="text-left md:text-center pb-2 border-b border-slate-100 pr-10 pl-1">
+                    <h3 className="text-sm font-bold text-slate-800 leading-snug">上门送车极致试驾服务预约</h3>
+                    <p className="text-[11px] text-slate-500 mt-1">专业评测团持证司机，随车携带原厂婴儿安全座椅供现场测试</p>
                   </div>
 
                   <div className="space-y-2.5 text-xs">
@@ -799,9 +894,9 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
                     </div>
                   ) : (
                     <>
-                      <div className="text-center pb-2 border-b border-slate-100">
-                        <h3 className="text-sm font-bold text-slate-800">✅ 微信分享静态海报已在后台成功渲染</h3>
-                        <p className="text-[11px] text-slate-500">已压缩为精美琥珀微卡片，可直接保存分享至家庭群讨论</p>
+                      <div className="text-left md:text-center pb-2 border-b border-slate-100 pr-10 pl-1">
+                        <h3 className="text-sm font-bold text-slate-800 leading-snug">✅ 静态分享海报已生成</h3>
+                        <p className="text-[11px] text-slate-500 mt-1">已压缩为精美琥珀微卡片，可直接保存分享至家庭群讨论</p>
                       </div>
 
                       {/* Poster UI Card mockup preview */}
@@ -824,7 +919,7 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
                             <span className="font-semibold">问界M7 Pro、理想L8 Pro</span>
                           </div>
                           <div>
-                            <span className="text-slate-300">核心诉求纠结点：</span>
+                            <span className="text-slate-300">关键纠结项：</span>
                             <span className="font-semibold">智驾首选与舒适带娃空降之间的取舍</span>
                           </div>
                           <div>
@@ -855,7 +950,7 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
                             showToast('正在为您保存图片到移动终端本地存储...', 'success');
                             setActiveModal('none');
                           }}
-                          className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 transition text-white font-bold rounded-xl text-xs active:bg-amber-600 text-center"
+                          className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 transition text-white font-bold rounded-xl text-xs active:bg-amber-600 text-center font-sans"
                         >
                           保存高清图片
                         </button>
@@ -864,16 +959,116 @@ export default function StageOneMVP({ showToast }: StageOneProps) {
                             showToast('已复制名片专属密匙链接！发送给好友即可查看。', 'success');
                             setActiveModal('none');
                           }}
-                          className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 transition text-slate-700 font-bold rounded-xl text-xs active:bg-slate-200 text-center"
+                          className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 transition text-slate-700 font-bold rounded-xl text-xs active:bg-slate-200 text-center font-sans"
                         >
                           复制名片链接
                         </button>
                       </div>
+
+                      <p className="text-[10px] text-slate-400 text-center mt-2 leading-relaxed font-sans">
+                        报告保存后，可通过这些入口再次查看：AI 对话内「我的对比记录」、首页、对比页报告入口
+                      </p>
                     </>
                   )}
                 </div>
               )}
 
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* OVERLAY: DETAILED VEHICLE DB COMPARISON OVERLAY */}
+      <AnimatePresence>
+        {showDbOverlay && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 z-[120] p-3 flex items-center justify-center font-sans text-xs"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl w-full max-h-[90%] p-4 overflow-y-auto space-y-3.5 border border-[#D1D8E6] relative shadow-xl text-[#111E36]"
+            >
+              <div className="flex justify-between items-center border-b border-[#D1D8E6]/40 pb-2">
+                <span className="text-[10px] bg-amber-600 text-white px-2 py-0.5 rounded font-black uppercase">
+                  车型库Plus 官方参数核实事实
+                </span>
+                <button 
+                  onClick={() => setShowDbOverlay(false)}
+                  className="text-xs font-mono font-bold bg-[#F4F6F9] text-[#667085] w-6 h-6 rounded-full flex items-center justify-center hover:bg-slate-200"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-bold text-[#111E36]">官方车型参数并集核实事实</h3>
+                <p className="text-[10px] text-[#667085] mt-0.5">所有客观物理数值深度拉取自汽车之家官方车型库 API：</p>
+              </div>
+
+              {/* Dynamic Categories selection tab */}
+              <div className="flex flex-wrap gap-1">
+                {[
+                  { id: 'price', label: '落地与优惠' },
+                  { id: 'space', label: '车身尺寸空间' },
+                  { id: 'power', label: '动力补能电耗' },
+                  { id: 'intelligence', label: '智驾与座舱' },
+                  { id: 'risk', label: '质保与雷区差评' }
+                ].map(p => {
+                  const isActive = activeParamTab === p.id;
+                  return (
+                    <button 
+                      key={p.id}
+                      onClick={() => setActiveParamTab(p.id as any)}
+                      className={`text-[10px] px-2.5 py-1.5 rounded-md border transition-colors ${
+                        isActive 
+                          ? 'bg-amber-600 border-amber-600 text-white font-bold' 
+                          : 'bg-white border-[#D1D8E6] text-[#667085] hover:bg-slate-50'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Dynamic database list */}
+              <div className="border border-[#D1D8E6]/60 rounded-xl overflow-hidden text-[10.5px]">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#F4F6F9] text-[#667085] border-b border-[#D1D8E6]">
+                      <th className="p-2.5 font-bold">参数项目</th>
+                      <th className="p-2.5 font-bold text-[#111E36]">问界 M7</th>
+                      <th className="p-2.5 font-bold text-[#111E36]">理想 L8</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeParamsFiltered.map((p, idx) => (
+                      <tr key={idx} className="border-b border-[#D1D8E6]/30 hover:bg-[#F6F8FC]/50">
+                        <td className="p-2.5 text-[#667085] font-medium">{p.parameterName}</td>
+                        <td className="p-2.5 font-bold font-mono text-[#111E36]">{p.modelAValue}</td>
+                        <td className="p-2.5 font-bold font-mono text-[#111E36]">{p.modelBValue}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Difference callouts */}
+              <div className="bg-amber-500/5 p-3 rounded-xl border border-amber-200/50 text-[10.5px] text-[#111E36] leading-relaxed">
+                💡 <strong>两车差异：</strong>{activeParamsFiltered[0]?.differenceText || '无重大硬性影响'}
+              </div>
+
+              <button 
+                onClick={() => setShowDbOverlay(false)}
+                className="w-full py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl active:bg-amber-700 transition"
+              >
+                确定并返回报告
+              </button>
             </motion.div>
           </motion.div>
         )}
